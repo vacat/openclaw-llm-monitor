@@ -963,10 +963,7 @@ def show_stats(date: Optional[str] = None, agent: Optional[str] = None, by_agent
             session_name = s['session_id'][:20] + "..." if len(s['session_id']) > 20 else s['session_id']
             print(f"  {session_name}: {s['calls']} calls ({s['tokens']:,} tokens)")
     
-    print()stats['total_calls']}")
-    print(f"总 Token:      {stats['total_tokens']:,}")
-    print(f"  ├─ Input:    {stats['input_tokens']:,}")
-    print(f"  └─ Output:   {stats['output_tokens']:,}")
+    print()
     
     # 费用展示
     print(f"\n💰 费用统计:")
@@ -1116,13 +1113,6 @@ def main():
     elif args.command == 'stats':
         date = datetime.now().strftime('%Y-%m-%d') if args.today else args.date
         show_stats(date, agent=args.agent, by_agent=args.by_agent)
-    else:
-        parser.print_help()
-        else:
-            run_monitor()
-    elif args.command == 'stats':
-        date = datetime.now().strftime('%Y-%m-%d') if args.today else args.date
-        show_stats(date)
     else:
         parser.print_help()
 
