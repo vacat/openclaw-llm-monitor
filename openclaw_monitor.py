@@ -488,87 +488,65 @@ class Database:
                 call.latency_ms, call.status, call.error_msg
             ))
     
-    def get_stats(self, date: Optional[str] = None) -> Dict:
+    def get_stats(self, date: Optional[str] = None, agent_filter: Optional[str] = None) -> Dict:
         """获取统计信息"""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             
-            # 基础统计
+            # 构建 WHERE 条件
+            where_conditions = []
+            params = []
+            
             if date:
-                row = conn.execute("""
-                    SELECT 
-                        COUNT(*) as total_calls,
-                        SUM(input_tokens) as input_tokens,
-                        SUM(output_tokens) as output_tokens,
-                        SUM(cache_read_tokens) as cache_read_tokens,
-                        SUM(cache_write_tokens) as cache_write_tokens,
-                        SUM(total_tokens) as total_tokens,
-                        SUM(CASE WHEN actual_cost > 0 THEN actual_cost ELSE 0 END) as actual_cost_total,
-                        SUM(estimated_cost) as estimated_cost_total,
-                        SUM(estimated_cost_input) as estimated_cost_input,
-                        SUM(estimated_cost_output) as estimated_cost_output,
-                        SUM(estimated_cost_cache_read) as estimated_cost_cache_read,
-                        SUM(estimated_cost_cache_write) as estimated_cost_cache_write,
-                        SUM(CASE WHEN actual_cost > 0 THEN 1 ELSE 0 END) as calls_with_actual_cost
-                    FROM llm_calls 
-                    WHERE date(timestamp) = ?
-                """, (date,)).fetchone()
-            else:
-                row = conn.execute("""
-                    SELECT 
-                        COUNT(*) as total_calls,
-                        SUM(input_tokens) as input_tokens,
-                        SUM(output_tokens) as output_tokens,
-                        SUM(cache_read_tokens) as cache_read_tokens,
-                        SUM(cache_write_tokens) as cache_write_tokens,
-                        SUM(total_tokens) as total_tokens,
-                        SUM(CASE WHEN actual_cost > 0 THEN actual_cost ELSE 0 END) as actual_cost_total,
-                        SUM(estimated_cost) as estimated_cost_total,
-                        SUM(estimated_cost_input) as estimated_cost_input,
-                        SUM(estimated_cost_output) as estimated_cost_output,
-                        SUM(estimated_cost_cache_read) as estimated_cost_cache_read,
-                        SUM(estimated_cost_cache_write) as estimated_cost_cache_write,
-                        SUM(CASE WHEN actual_cost > 0 THEN 1 ELSE 0 END) as calls_with_actual_cost
-                    FROM llm_calls
-                """).fetchone()
+                where_conditions.append("date(timestamp) = ?")
+                params.append(date)
+            
+            if agent_filter:
+                where_conditions.append("session_id LIKE ?")
+                params.append(f"%{agent_filter}%")
+            
+            where_clause = "WHERE " + " AND ".join(where_conditions) if where_conditions else ""
+            
+            # 基础统计
+            row = conn.execute(f"""
+                SELECT 
+                    COUNT(*) as total_calls,
+                    SUM(input_tokens) as input_tokens,
+                    SUM(output_tokens) as output_tokens,
+                    SUM(cache_read_tokens) as cache_read_tokens,
+                    SUM(cache_write_tokens) as cache_write_tokens,
+                    SUM(total_tokens) as total_tokens,
+                    SUM(CASE WHEN actual_cost > 0 THEN actual_cost ELSE 0 END) as actual_cost_total,
+                    SUM(estimated_cost) as estimated_cost_total,
+                    SUM(estimated_cost_input) as estimated_cost_input,
+                    SUM(estimated_cost_output) as estimated_cost_output,
+                    SUM(estimated_cost_cache_read) as estimated_cost_cache_read,
+                    SUM(estimated_cost_cache_write) as estimated_cost_cache_write,
+                    SUM(CASE WHEN actual_cost > 0 THEN 1 ELSE 0 END) as calls_with_actual_cost
+                FROM llm_calls 
+                {where_clause}
+            """, params).fetchone()
             
             # 按模型统计
-            if date:
-                models = conn.execute("""
-                    SELECT model, COUNT(*) as calls, SUM(total_tokens) as tokens,
-                           SUM(CASE WHEN actual_cost > 0 THEN actual_cost ELSE 0 END) as actual_cost,
-                           SUM(estimated_cost) as estimated_cost
-                    FROM llm_calls 
-                    WHERE date(timestamp) = ?
-                    GROUP BY model
-                """, (date,)).fetchall()
-            else:
-                models = conn.execute("""
-                    SELECT model, COUNT(*) as calls, SUM(total_tokens) as tokens,
-                           SUM(CASE WHEN actual_cost > 0 THEN actual_cost ELSE 0 END) as actual_cost,
-                           SUM(estimated_cost) as estimated_cost
-                    FROM llm_calls 
-                    GROUP BY model
-                """).fetchall()
+            models = conn.execute(f"""
+                SELECT model, COUNT(*) as calls, SUM(total_tokens) as tokens,
+                       SUM(CASE WHEN actual_cost > 0 THEN actual_cost ELSE 0 END) as actual_cost,
+                       SUM(estimated_cost) as estimated_cost
+                FROM llm_calls 
+                {where_clause}
+                GROUP BY model
+                ORDER BY calls DESC
+            """, params).fetchall()
             
             # 按会话统计
-            if date:
-                sessions = conn.execute("""
-                    SELECT session_id, COUNT(*) as calls, SUM(total_tokens) as tokens
-                    FROM llm_calls 
-                    WHERE date(timestamp) = ?
-                    GROUP BY session_id
-                    ORDER BY calls DESC
-                    LIMIT 10
-                """, (date,)).fetchall()
-            else:
-                sessions = conn.execute("""
-                    SELECT session_id, COUNT(*) as calls, SUM(total_tokens) as tokens
-                    FROM llm_calls 
-                    GROUP BY session_id
-                    ORDER BY calls DESC
-                    LIMIT 10
-                """).fetchall()
+            sessions = conn.execute(f"""
+                SELECT session_id, COUNT(*) as calls, SUM(total_tokens) as tokens
+                FROM llm_calls 
+                {where_clause}
+                GROUP BY session_id
+                ORDER BY calls DESC
+                LIMIT 10
+            """, params).fetchall()
             
             return {
                 'total_calls': row['total_calls'] or 0,
