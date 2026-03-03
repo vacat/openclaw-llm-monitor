@@ -27,20 +27,51 @@ pip install watchdog
 
 ## 使用方法
 
+### 命令概览
+
+```bash
+# 查看帮助
+python openclaw_monitor.py --help
+python openclaw_monitor.py monitor --help
+python openclaw_monitor.py stats --help
+```
+
 ### 1. 启动实时监控
 
+**监控默认 main agent：**
 ```bash
 python openclaw_monitor.py monitor
 ```
 
-### 2. 查看今日统计
+**监控多个 agent：**
+```bash
+python openclaw_monitor.py monitor --agents main,agent2,agent3
+# 或简写
+python openclaw_monitor.py monitor -a main,agent2
+```
 
+**监控所有 agent：**
+```bash
+python openclaw_monitor.py monitor --agents all
+# 或简写
+python openclaw_monitor.py monitor -a all
+```
+
+**监控指定目录：**
+```bash
+python openclaw_monitor.py monitor --dir /path/to/sessions
+# 或简写
+python openclaw_monitor.py monitor -d /path/to/sessions
+```
+
+### 2. 查看统计信息
+
+**查看今日统计：**
 ```bash
 python openclaw_monitor.py stats --today
 ```
 
-### 3. 查看指定日期
-
+**查看指定日期：**
 ```bash
 python openclaw_monitor.py stats --date 2026-03-03
 ```
