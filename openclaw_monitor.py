@@ -566,31 +566,34 @@ class Database:
                 'sessions': [dict(r) for r in sessions]
             }
     
-    def get_model_details(self, date: Optional[str], model: str) -> Dict:
+    def get_model_details(self, date: Optional[str], model: str, agent_filter: Optional[str] = None) -> Dict:
         """获取指定模型的详细 token 分布"""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             
+            # 构建 WHERE 条件
+            where_conditions = ["model = ?"]
+            params = [model]
+            
             if date:
-                row = conn.execute("""
-                    SELECT 
-                        SUM(input_tokens) as input_tokens,
-                        SUM(output_tokens) as output_tokens,
-                        SUM(cache_read_tokens) as cache_read_tokens,
-                        SUM(cache_write_tokens) as cache_write_tokens
-                    FROM llm_calls 
-                    WHERE date(timestamp) = ? AND model = ?
-                """, (date, model)).fetchone()
-            else:
-                row = conn.execute("""
-                    SELECT 
-                        SUM(input_tokens) as input_tokens,
-                        SUM(output_tokens) as output_tokens,
-                        SUM(cache_read_tokens) as cache_read_tokens,
-                        SUM(cache_write_tokens) as cache_write_tokens
-                    FROM llm_calls 
-                    WHERE model = ?
-                """, (model,)).fetchone()
+                where_conditions.append("date(timestamp) = ?")
+                params.append(date)
+            
+            if agent_filter:
+                where_conditions.append("session_id LIKE ?")
+                params.append(f"%{agent_filter}%")
+            
+            where_clause = "WHERE " + " AND ".join(where_conditions)
+            
+            row = conn.execute(f"""
+                SELECT 
+                    SUM(input_tokens) as input_tokens,
+                    SUM(output_tokens) as output_tokens,
+                    SUM(cache_read_tokens) as cache_read_tokens,
+                    SUM(cache_write_tokens) as cache_write_tokens
+                FROM llm_calls 
+                {where_clause}
+            """, params).fetchone()
             
             return {
                 'input': row['input_tokens'] or 0,
