@@ -820,18 +820,150 @@ def run_monitor(sessions_dir: Optional[Path] = None, agents: Optional[list] = No
             observer.join()
         print("✅ 监控已停止")
 
-def show_stats(date: Optional[str] = None):
-    """显示统计信息"""
+def show_stats(date: Optional[str] = None, agent: Optional[str] = None, by_agent: bool = False):
+    """显示统计信息
+    
+    Args:
+        date: 指定日期
+        agent: 筛选特定 agent
+        by_agent: 按 agent 分组显示
+    """
     db = Database()
     
     if date is None:
         date = datetime.now().strftime('%Y-%m-%d')
     
-    stats = db.get_stats(date)
-    
-    print(f"\n📊 LLM 调用统计 ({date})")
+    # 构建标题
+    title_suffix = f" [{agent}]" if agent else ""
+    print(f"\n📊 LLM 调用统计 ({date}){title_suffix}")
     print("=" * 60)
+    
+    # 获取统计数据
+    stats = db.get_stats(date, agent_filter=agent)
+    
     print(f"总调用次数:    {stats['total_calls']}")
+    print(f"总 Token:      {stats['total_tokens']:,}")
+    print(f"  ├─ Input:    {stats['input_tokens']:,}")
+    print(f"  └─ Output:   {stats['output_tokens']:,}")
+    
+    # 费用展示
+    print(f"\n💰 费用统计:")
+    if stats['actual_cost'] > 0:
+        print(f"  实际费用:    ${stats['actual_cost']:.4f} USD (来自API)")
+    
+    # 展示估算费用明细（按模型分组显示不同币种）
+    if stats['models']:
+        print(f"\n  估算费用（按模型定价币种）:")
+        
+        # 按币种分组
+        costs_by_currency = defaultdict(lambda: {'total': 0, 'input': 0, 'output': 0, 
+                                                  'cache_read': 0, 'cache_write': 0,
+                                                  'input_tokens': 0, 'output_tokens': 0,
+                                                  'cache_read_tokens': 0, 'cache_write_tokens': 0})
+        
+        for m in stats['models']:
+            model = m['model']
+            pricing = get_model_pricing(model)
+            currency = pricing['currency']
+            symbol = pricing['symbol']
+            
+            # 获取该模型的详细费用
+            model_details = db.get_model_details(date, model, agent_filter=agent)
+            cost_info = calculate_cost(model, model_details['input'], model_details['output'],
+                                      model_details.get('cache_read', 0), model_details.get('cache_write', 0))
+            
+            costs_by_currency[currency]['total'] += cost_info['total']
+            costs_by_currency[currency]['input'] += cost_info['input']
+            costs_by_currency[currency]['output'] += cost_info['output']
+            costs_by_currency[currency]['cache_read'] += cost_info['cache_read']
+            costs_by_currency[currency]['cache_write'] += cost_info['cache_write']
+            costs_by_currency[currency]['symbol'] = symbol
+            costs_by_currency[currency]['input_tokens'] += model_details['input']
+            costs_by_currency[currency]['output_tokens'] += model_details['output']
+            costs_by_currency[currency]['cache_read_tokens'] += model_details.get('cache_read', 0)
+            costs_by_currency[currency]['cache_write_tokens'] += model_details.get('cache_write', 0)
+        
+        # 按币种显示
+        for currency, costs in costs_by_currency.items():
+            symbol = costs['symbol']
+            print(f"\n    [{currency}]")
+            print(f"    实际计费: {symbol}{costs['total']:.4f}")
+            print(f"      ├─ Input:       {symbol}{costs['input']:.4f} ({costs['input_tokens']:,} tokens)")
+            print(f"      ├─ Output:      {symbol}{costs['output']:.4f} ({costs['output_tokens']:,} tokens)")
+            if costs['cache_read_tokens'] > 0 or costs['cache_write_tokens'] > 0:
+                print(f"      ├─ Cache Read:  {symbol}{costs['cache_read']:.4f} ({costs['cache_read_tokens']:,} tokens)")
+                print(f"      └─ Cache Write: {symbol}{costs['cache_write']:.4f} ({costs['cache_write_tokens']:,} tokens)")
+            
+            # 计算如果没有 cache 会多花多少（节省费用）
+            if costs['cache_read_tokens'] > 0:
+                # 获取该币种的模型定价（假设主要使用一个模型）
+                sample_model = None
+                for m in stats['models']:
+                    p = get_model_pricing(m['model'])
+                    if p['currency'] == currency:
+                        sample_model = m['model']
+                        break
+                
+                if sample_model:
+                    pricing = get_model_pricing(sample_model)
+                    # 如果没有 cache，cache_read_tokens 会按正常 input 价格计费
+                    normal_input_price = pricing['input']  # 正常 input 价格
+                    cache_read_price = pricing['cache_read']  # cache read 价格
+                    
+                    # 计算节省的费用
+                    cache_read_tokens = costs['cache_read_tokens']
+                    would_be_cost = (cache_read_tokens / 1_000_000) * normal_input_price
+                    actual_cache_cost = (cache_read_tokens / 1_000_000) * cache_read_price
+                    saved_cost = would_be_cost - actual_cache_cost
+                    
+                    print(f"\n    💡 Cache 节省分析:")
+                    print(f"      如果没有 Cache 需支付: {symbol}{would_be_cost:.4f}")
+                    print(f"      Cache Read 实际支付:   {symbol}{actual_cache_cost:.4f}")
+                    print(f"      节省费用:              {symbol}{saved_cost:.4f} ({saved_cost/would_be_cost*100:.1f}%)")
+    else:
+        # 如果没有模型分布，使用默认计算
+        default_cost = calculate_cost('default', stats['input_tokens'], stats['output_tokens'],
+                                     stats['cache_read_tokens'], stats['cache_write_tokens'])
+        symbol = default_cost['symbol']
+        print(f"\n  估算费用:    {symbol}{default_cost['total']:.4f} {default_cost['currency']}")
+    
+    if stats['models']:
+        print(f"\n按模型分布:")
+        for m in stats['models']:
+            model = m['model']
+            calls = m['calls']
+            tokens = m['tokens']
+            
+            pricing = get_model_pricing(model)
+            symbol = pricing['symbol']
+            currency = pricing['currency']
+            
+            cost_info = ""
+            if m.get('actual_cost', 0) > 0:
+                cost_info = f", actual: ${m['actual_cost']:.4f}"
+            if m.get('estimated_cost', 0) > 0:
+                cost_info += f", est: {symbol}{m['estimated_cost']:.4f} {currency}"
+            
+            print(f"  {model}: {calls} calls ({tokens:,} tokens{cost_info})")
+    
+    # 按 agent 分组显示
+    if by_agent and stats.get('by_agent'):
+        print(f"\n📁 按 Agent 分布:")
+        print("=" * 60)
+        for agent_name, agent_stats in stats['by_agent'].items():
+            print(f"\n  [{agent_name}]")
+            print(f"    调用次数: {agent_stats['calls']}")
+            print(f"    Tokens:   {agent_stats['tokens']:,}")
+            if agent_stats.get('cost', 0) > 0:
+                print(f"    费用:     ¥{agent_stats['cost']:.2f}")
+    
+    if stats['sessions']:
+        print(f"\n按会话分布 (Top 10):")
+        for s in stats['sessions']:
+            session_name = s['session_id'][:20] + "..." if len(s['session_id']) > 20 else s['session_id']
+            print(f"  {session_name}: {s['calls']} calls ({s['tokens']:,} tokens)")
+    
+    print()stats['total_calls']}")
     print(f"总 Token:      {stats['total_tokens']:,}")
     print(f"  ├─ Input:    {stats['input_tokens']:,}")
     print(f"  └─ Output:   {stats['output_tokens']:,}")
@@ -959,6 +1091,8 @@ def main():
     stats_parser = subparsers.add_parser('stats', help='Show statistics')
     stats_parser.add_argument('--date', help='Date to show stats for (YYYY-MM-DD)')
     stats_parser.add_argument('--today', action='store_true', help='Show today\'s stats')
+    stats_parser.add_argument('--agent', '-a', help='Filter by agent name')
+    stats_parser.add_argument('--by-agent', action='store_true', help='Group stats by agent')
     
     args = parser.parse_args()
     
@@ -977,6 +1111,13 @@ def main():
         elif args.dir:
             sessions_dir = Path(args.dir)
             run_monitor(sessions_dir=sessions_dir)
+        else:
+            run_monitor()
+    elif args.command == 'stats':
+        date = datetime.now().strftime('%Y-%m-%d') if args.today else args.date
+        show_stats(date, agent=args.agent, by_agent=args.by_agent)
+    else:
+        parser.print_help()
         else:
             run_monitor()
     elif args.command == 'stats':
