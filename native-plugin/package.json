@@ -1,11 +1,12 @@
 {
-  "name": "llm-monitor",
+  "name": "@openclaw/llm-monitor",
   "version": "1.0.0",
   "description": "OpenClaw LLM Monitor - Native plugin version",
+  "type": "module",
   "main": "index.ts",
   "scripts": {
-    "test": "echo 'Tests require npm install'",
-    "lint": "echo 'Lint requires npm install'"
+    "test": "jest",
+    "lint": "eslint . --ext .ts"
   },
   "dependencies": {
     "sqlite3": "^5.1.6",
@@ -18,21 +19,14 @@
     "@types/sqlite3": "^3.1.11",
     "jest": "^29.7.0",
     "ts-jest": "^29.1.1",
-    "typescript": "^5.3.3"
+    "openclaw": "workspace:*"
   },
   "peerDependencies": {
-    "@openclaw/plugin-sdk": "*"
+    "openclaw": ">=2026.1.26"
   },
-  "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "node",
-    "roots": ["<rootDir>/tests"],
-    "testMatch": ["**/*.test.ts"],
-    "collectCoverageFrom": [
-      "index.ts",
-      "!**/node_modules/**"
-    ],
-    "coverageDirectory": "coverage",
-    "coverageReporters": ["text", "lcov", "html"]
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
   }
 }

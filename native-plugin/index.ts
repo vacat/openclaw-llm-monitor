@@ -1,4 +1,4 @@
-import type { OpenClawPluginApi, OpenClawPluginConfig } from "@openclaw/plugin-sdk";
+import type { OpenClawPluginApi, OpenClawPluginConfig } from "openclaw";
 import { z } from "zod";
 import * as sqlite3 from "sqlite3";
 import { promises as fs } from "fs";

@@ -26,53 +26,100 @@ llm-monitor/
 └── DEVELOPMENT.md           # 开发文档
 ```
 
-## 🚀 快速开始
+## 🚀 安装方法
 
-### 1. 安装依赖
+### 方法 1: 手动安装（推荐开发使用）
 
 ```bash
-cd /root/.openclaw/extensions/llm-monitor
+# 1. 克隆仓库
+git clone https://github.com/vacat/openclaw-llm-monitor.git
+cd openclaw-llm-monitor/native-plugin
+
+# 2. 安装依赖
 npm install
+
+# 3. 复制到 OpenClaw 扩展目录
+cp -r . /usr/lib/node_modules/openclaw/extensions/llm-monitor/
 ```
 
-### 2. 编译插件
+### 方法 2: 符号链接（开发调试）
 
 ```bash
-npm run build
+# 在 OpenClaw 扩展目录创建符号链接
+ln -s /path/to/openclaw-llm-monitor/native-plugin \
+  /usr/lib/node_modules/openclaw/extensions/llm-monitor
 ```
 
-### 3. 运行测试
+### 方法 3: 作为本地扩展
 
 ```bash
-npm test
+# 复制到用户扩展目录
+mkdir -p ~/.openclaw/extensions/llm-monitor
+cp -r native-plugin/* ~/.openclaw/extensions/llm-monitor/
 ```
 
-### 4. 启用插件
+## ⚙️ 启用插件
 
-在 OpenClaw 配置中启用：
+### 1. 修改 OpenClaw 配置
+
+编辑 `~/.openclaw/config.json`：
 
 ```json
 {
-  "plugins": {
-    "allow": ["llm-monitor"]
+  "extensions": {
+    "llm-monitor": {
+      "enabled": true,
+      "config": {
+        "dbPath": "~/.openclaw/monitor/llm_stats.db",
+        "alertThreshold": {
+          "dailyTokens": 10000000,
+          "dailyCost": 50
+        }
+      }
+    }
   }
 }
+```
+
+### 2. 重启 OpenClaw
+
+```bash
+openclaw gateway restart
+```
+
+### 3. 验证安装
+
+```bash
+# 检查插件是否加载
+openclaw status
+
+# 查看帮助
+openclaw llm-monitor --help
 ```
 
 ## 📊 使用方法
 
 ### Web Dashboard
 
-访问: `http://localhost:18789/llm-monitor`
+插件启动后，访问：
+
+```
+http://localhost:18789/llm-monitor
+```
 
 ### CLI 命令
 
 ```bash
-openclaw llm-monitor              # 查看今日统计
-openclaw llm-monitor -d 2026-03-03  # 查看指定日期
+# 查看今日统计
+openclaw llm-monitor
+
+# 查看指定日期
+openclaw llm-monitor -d 2026-03-03
 ```
 
-### Tools
+### Tools 调用
+
+在 agent 会话中使用：
 
 ```typescript
 // 获取今日统计
@@ -84,18 +131,30 @@ const stats = await tools.llm_monitor_date({ date: "2026-03-03" });
 
 ## 🔧 配置选项
 
-```json
-{
-  "llm-monitor": {
-    "enabled": true,
-    "dbPath": "~/.openclaw/monitor/llm_stats.db",
-    "alertThreshold": {
-      "dailyTokens": 10000000,
-      "dailyCost": 50
-    }
-  }
-}
+| 选项 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `enabled` | boolean | true | 是否启用监控 |
+| `dbPath` | string | ~/.openclaw/monitor/llm_stats.db | 数据库路径 |
+| `alertThreshold.dailyTokens` | number | 10000000 | 每日 Token 告警阈值 |
+| `alertThreshold.dailyCost` | number | 50 | 每日费用告警阈值 (CNY) |
+
+## 🧪 开发调试
+
+```bash
+# 进入插件目录
+cd /usr/lib/node_modules/openclaw/extensions/llm-monitor
+
+# 安装开发依赖
+npm install
+
+# 运行测试
+npm test
+
+# 查看日志
+openclaw logs -f | grep "LLM Monitor"
 ```
+
+## 📝 快速开始
 
 ## 📈 Dashboard 功能
 
