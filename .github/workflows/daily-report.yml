@@ -1,0 +1,65 @@
+name: Daily LLM Stats Report
+
+on:
+  schedule:
+    # 每天 UTC 00:00 运行 (北京时间 08:00)
+    - cron: '0 0 * * *'
+  workflow_dispatch:  # 支持手动触发
+
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        pip install watchdog
+        
+    - name: Download latest database
+      run: |
+        # 从之前的 workflow run 中恢复数据库
+        # 或者从外部存储（如 S3）下载
+        echo "Database would be restored from cache or external storage"
+        
+    - name: Generate daily report
+      run: |
+        python openclaw_monitor.py stats --today > daily_report.txt
+        
+    - name: Upload report
+      uses: actions/upload-artifact@v4
+      with:
+        name: daily-report-${{ github.run_id }}
+        path: daily_report.txt
+        
+    - name: Create Issue with report
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const report = fs.readFileSync('daily_report.txt', 'utf8');
+          
+          const title = `📊 Daily LLM Stats - ${new Date().toISOString().split('T')[0]}`;
+          const body = \`## Daily Report
+          
+          \`\`\`
+          ${report}
+          \`\`\`
+          
+          Generated at: ${new Date().toISOString()}
+          \`;
+          
+          github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: title,
+            body: body,
+            labels: ['daily-report', 'automated']
+          });

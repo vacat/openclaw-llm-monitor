@@ -1,0 +1,57 @@
+name: Alert on High Token Usage
+
+on:
+  schedule:
+    # 每 6 小时检查一次
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+env:
+  # 设置告警阈值
+  DAILY_TOKEN_THRESHOLD: 10000000  # 1000万 tokens
+  DAILY_COST_THRESHOLD_CNY: 50     # 50 元人民币
+
+jobs:
+  check-usage:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: pip install watchdog
+      
+    - name: Check today's usage
+      id: check
+      run: |
+        # 这里需要从某个地方获取实时数据
+        # 方案1: 从远程服务器 API 获取
+        # 方案2: 从数据库文件获取（需要提前同步）
+        
+        echo "Checking usage..."
+        # python openclaw_monitor.py stats --today >> $GITHUB_OUTPUT
+        
+    - name: Send alert if threshold exceeded
+      if: false  # 暂时禁用，需要实现数据获取逻辑
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const title = '🚨 LLM Usage Alert - Threshold Exceeded';
+          const body = \`Token usage or cost has exceeded the threshold.
+          
+          Please check the dashboard for details.
+          \`;
+          
+          github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: title,
+            body: body,
+            labels: ['alert', 'high-usage']
+          });
