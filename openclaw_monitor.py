@@ -23,8 +23,13 @@ DEFAULT_DB_PATH = Path.home() / ".openclaw" / "monitor" / "llm_stats.db"
 SESSIONS_DIR = Path.home() / ".openclaw" / "agents" / "main" / "sessions"
 
 # 模型价格配置 (每 1M tokens)
+# 价格来源说明：
+# - [Official] 官方公开定价
+# - [Estimated] 估算价格（基于市场行情）
+# - [Pending] 待官方确认
 MODEL_PRICING = {
-    # OpenAI 模型 (USD)
+    # ========== OpenAI 模型 (USD) - [Official] ==========
+    # 来源: https://openai.com/pricing
     'gpt-4o': {
         'input': 2.50, 'output': 10.00, 'cache_read': 1.25, 'cache_write': 2.50,
         'currency': 'USD', 'symbol': '$'
@@ -95,6 +100,244 @@ MODEL_PRICING = {
     },
     'moonshot-v1-128k': {
         'input': 10.00, 'output': 30.00, 'cache_read': 2.00, 'cache_write': 10.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    
+    # MiniMax 模型 - CNY
+    'minimax': {
+        'input': 10.00, 'output': 20.00, 'cache_read': 5.00, 'cache_write': 10.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'minimax-abab6.5': {
+        'input': 10.00, 'output': 20.00, 'cache_read': 5.00, 'cache_write': 10.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'minimax-abab6': {
+        'input': 15.00, 'output': 30.00, 'cache_read': 7.50, 'cache_write': 15.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'minimax-abab5.5': {
+        'input': 5.00, 'output': 10.00, 'cache_read': 2.50, 'cache_write': 5.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    
+    # 智谱 AI (Zhipu/GLM) - CNY
+    'glm': {
+        'input': 0.50, 'output': 1.00, 'cache_read': 0.25, 'cache_write': 0.50,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'glm-4': {
+        'input': 0.50, 'output': 1.00, 'cache_read': 0.25, 'cache_write': 0.50,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'glm-4-plus': {
+        'input': 1.00, 'output': 2.00, 'cache_read': 0.50, 'cache_write': 1.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'glm-4-air': {
+        'input': 0.10, 'output': 0.20, 'cache_read': 0.05, 'cache_write': 0.10,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'glm-4-flash': {
+        'input': 0.01, 'output': 0.02, 'cache_read': 0.005, 'cache_write': 0.01,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'glm-3-turbo': {
+        'input': 0.05, 'output': 0.10, 'cache_read': 0.025, 'cache_write': 0.05,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'chatglm': {
+        'input': 0.05, 'output': 0.10, 'cache_read': 0.025, 'cache_write': 0.05,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'chatglm-3': {
+        'input': 0.05, 'output': 0.10, 'cache_read': 0.025, 'cache_write': 0.05,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    
+    # 阿里云通义千问 (Qwen) - CNY
+    'qwen': {
+        'input': 0.50, 'output': 1.00, 'cache_read': 0.25, 'cache_write': 0.50,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'qwen-max': {
+        'input': 2.00, 'output': 6.00, 'cache_read': 1.00, 'cache_write': 2.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'qwen-plus': {
+        'input': 0.80, 'output': 2.00, 'cache_read': 0.40, 'cache_write': 0.80,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'qwen-turbo': {
+        'input': 0.30, 'output': 0.60, 'cache_read': 0.15, 'cache_write': 0.30,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'qwen-long': {
+        'input': 0.50, 'output': 1.00, 'cache_read': 0.25, 'cache_write': 0.50,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'qwen2.5': {
+        'input': 0.30, 'output': 0.60, 'cache_read': 0.15, 'cache_write': 0.30,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'qwen2.5-72b': {
+        'input': 0.50, 'output': 1.00, 'cache_read': 0.25, 'cache_write': 0.50,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'qwen2.5-32b': {
+        'input': 0.30, 'output': 0.60, 'cache_read': 0.15, 'cache_write': 0.30,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'qwen2.5-14b': {
+        'input': 0.20, 'output': 0.40, 'cache_read': 0.10, 'cache_write': 0.20,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'qwen2.5-7b': {
+        'input': 0.10, 'output': 0.20, 'cache_read': 0.05, 'cache_write': 0.10,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'qwen-coder': {
+        'input': 0.20, 'output': 0.40, 'cache_read': 0.10, 'cache_write': 0.20,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'qwen-math': {
+        'input': 0.40, 'output': 0.80, 'cache_read': 0.20, 'cache_write': 0.40,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    
+    # 百度文心一言 (ERNIE) - CNY
+    'ernie': {
+        'input': 1.20, 'output': 1.20, 'cache_read': 0.60, 'cache_write': 1.20,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'ernie-4.0': {
+        'input': 3.00, 'output': 9.00, 'cache_read': 1.50, 'cache_write': 3.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'ernie-3.5': {
+        'input': 1.20, 'output': 1.20, 'cache_read': 0.60, 'cache_write': 1.20,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'ernie-speed': {
+        'input': 0.10, 'output': 0.10, 'cache_read': 0.05, 'cache_write': 0.10,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'ernie-lite': {
+        'input': 0.01, 'output': 0.01, 'cache_read': 0.005, 'cache_write': 0.01,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    
+    # 字节跳动豆包 (Doubao) - CNY
+    'doubao': {
+        'input': 0.80, 'output': 2.00, 'cache_read': 0.40, 'cache_write': 0.80,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'doubao-pro': {
+        'input': 2.00, 'output': 5.00, 'cache_read': 1.00, 'cache_write': 2.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'doubao-lite': {
+        'input': 0.30, 'output': 0.60, 'cache_read': 0.15, 'cache_write': 0.30,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    
+    # 腾讯混元 (Hunyuan) - CNY
+    'hunyuan': {
+        'input': 1.50, 'output': 3.00, 'cache_read': 0.75, 'cache_write': 1.50,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'hunyuan-pro': {
+        'input': 3.00, 'output': 6.00, 'cache_read': 1.50, 'cache_write': 3.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'hunyuan-lite': {
+        'input': 0.50, 'output': 1.00, 'cache_read': 0.25, 'cache_write': 0.50,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    
+    # 商汤日日新 (SenseChat) - CNY
+    'sensechat': {
+        'input': 2.00, 'output': 4.00, 'cache_read': 1.00, 'cache_write': 2.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'sensechat-5': {
+        'input': 5.00, 'output': 10.00, 'cache_read': 2.50, 'cache_write': 5.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'sensechat-lite': {
+        'input': 0.50, 'output': 1.00, 'cache_read': 0.25, 'cache_write': 0.50,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    
+    # 零一万物 (Yi) - CNY
+    'yi': {
+        'input': 1.00, 'output': 2.00, 'cache_read': 0.50, 'cache_write': 1.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'yi-large': {
+        'input': 2.00, 'output': 4.00, 'cache_read': 1.00, 'cache_write': 2.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'yi-medium': {
+        'input': 0.50, 'output': 1.00, 'cache_read': 0.25, 'cache_write': 0.50,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'yi-spark': {
+        'input': 0.10, 'output': 0.20, 'cache_read': 0.05, 'cache_write': 0.10,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    
+    # 百川智能 (Baichuan) - CNY
+    'baichuan': {
+        'input': 1.00, 'output': 2.00, 'cache_read': 0.50, 'cache_write': 1.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'baichuan4': {
+        'input': 2.00, 'output': 4.00, 'cache_read': 1.00, 'cache_write': 2.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'baichuan3': {
+        'input': 1.00, 'output': 2.00, 'cache_read': 0.50, 'cache_write': 1.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'baichuan2': {
+        'input': 0.50, 'output': 1.00, 'cache_read': 0.25, 'cache_write': 0.50,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    
+    # 阶跃星辰 (StepFun) - CNY
+    'step': {
+        'input': 2.00, 'output': 4.00, 'cache_read': 1.00, 'cache_write': 2.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'step-1': {
+        'input': 2.00, 'output': 4.00, 'cache_read': 1.00, 'cache_write': 2.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'step-2': {
+        'input': 5.00, 'output': 10.00, 'cache_read': 2.50, 'cache_write': 5.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    
+    # DeepSeek - CNY
+    'deepseek': {
+        'input': 1.00, 'output': 2.00, 'cache_read': 0.50, 'cache_write': 1.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'deepseek-chat': {
+        'input': 1.00, 'output': 2.00, 'cache_read': 0.50, 'cache_write': 1.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'deepseek-coder': {
+        'input': 1.00, 'output': 2.00, 'cache_read': 0.50, 'cache_write': 1.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'deepseek-v3': {
+        'input': 2.00, 'output': 8.00, 'cache_read': 1.00, 'cache_write': 2.00,
+        'currency': 'CNY', 'symbol': '¥'
+    },
+    'deepseek-r1': {
+        'input': 4.00, 'output': 16.00, 'cache_read': 2.00, 'cache_write': 4.00,
         'currency': 'CNY', 'symbol': '¥'
     },
     
