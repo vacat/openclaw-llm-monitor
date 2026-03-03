@@ -1,5 +1,6 @@
 name: Daily LLM Stats Report
 
+# Trigger: Updated to enable GitHub Actions display
 on:
   schedule:
     # 每天 UTC 00:00 运行 (北京时间 08:00)
