@@ -114,6 +114,26 @@ python openclaw_monitor.py stats --today
 python openclaw_monitor.py stats --date 2026-03-03
 ```
 
+**查看单个 agent 统计：**
+```bash
+python openclaw_monitor.py stats -a main
+```
+
+**查看多个 agent 汇总：**
+```bash
+python openclaw_monitor.py stats -a main,agent2
+```
+
+**查看所有 agent 汇总：**
+```bash
+python openclaw_monitor.py stats -a all
+```
+
+**按 agent 分组显示：**
+```bash
+python openclaw_monitor.py stats -a all --by-agent
+```
+
 ## 输出示例
 
 ```

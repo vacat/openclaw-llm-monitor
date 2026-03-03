@@ -50,6 +50,9 @@ python3 tests/test_monitor.py
 # 监控默认 main agent
 openclaw-monitor monitor
 
+# 监控单个 agent
+openclaw-monitor monitor -a main
+
 # 监控多个 agent
 openclaw-monitor monitor -a main,agent2
 
@@ -68,6 +71,18 @@ openclaw-monitor stats
 
 # 查看指定日期
 openclaw-monitor stats --date 2026-03-03
+
+# 查看单个 agent 统计
+openclaw-monitor stats -a main
+
+# 查看多个 agent 汇总
+openclaw-monitor stats -a main,agent2
+
+# 查看所有 agent 汇总
+openclaw-monitor stats -a all
+
+# 按 agent 分组显示
+openclaw-monitor stats -a all --by-agent
 ```
 
 ### 3. 查看帮助
