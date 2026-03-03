@@ -798,12 +798,13 @@ def run_monitor(sessions_dir: Optional[Path] = None, agents: Optional[list] = No
             observer.join()
         print("✅ 监控已停止")
 
-def show_stats(date: Optional[str] = None, agent: Optional[str] = None, by_agent: bool = False):
+def show_stats(date: Optional[str] = None, agent: Optional[str] = None, agents: Optional[List[str]] = None, by_agent: bool = False):
     """显示统计信息
     
     Args:
         date: 指定日期
-        agent: 筛选特定 agent
+        agent: 筛选特定 agent（单个）
+        agents: 筛选多个 agent
         by_agent: 按 agent 分组显示
     """
     db = Database()
@@ -811,13 +812,51 @@ def show_stats(date: Optional[str] = None, agent: Optional[str] = None, by_agent
     if date is None:
         date = datetime.now().strftime('%Y-%m-%d')
     
-    # 构建标题
-    title_suffix = f" [{agent}]" if agent else ""
-    print(f"\n📊 LLM 调用统计 ({date}){title_suffix}")
-    print("=" * 60)
-    
-    # 获取统计数据
-    stats = db.get_stats(date, agent_filter=agent)
+    # 处理多个 agents 的情况
+    if agents and len(agents) > 1:
+        # 构建标题
+        print(f"\n📊 LLM 调用统计 ({date}) [{', '.join(agents)}]")
+        print("=" * 60)
+        
+        # 合并多个 agent 的统计
+        total_stats = {
+            'total_calls': 0,
+            'input_tokens': 0,
+            'output_tokens': 0,
+            'cache_read_tokens': 0,
+            'cache_write_tokens': 0,
+            'total_tokens': 0,
+            'actual_cost': 0,
+            'estimated_cost': 0,
+            'models': [],
+            'sessions': []
+        }
+        
+        for a in agents:
+            stats = db.get_stats(date, agent_filter=a)
+            total_stats['total_calls'] += stats['total_calls']
+            total_stats['input_tokens'] += stats['input_tokens']
+            total_stats['output_tokens'] += stats['output_tokens']
+            total_stats['cache_read_tokens'] += stats['cache_read_tokens']
+            total_stats['cache_write_tokens'] += stats['cache_write_tokens']
+            total_stats['total_tokens'] += stats['total_tokens']
+            total_stats['actual_cost'] += stats['actual_cost']
+            total_stats['estimated_cost'] += stats['estimated_cost']
+            total_stats['models'].extend(stats['models'])
+            total_stats['sessions'].extend(stats['sessions'])
+        
+        stats = total_stats
+    else:
+        # 单个 agent 或无筛选
+        agent_filter = agent or (agents[0] if agents else None)
+        
+        # 构建标题
+        title_suffix = f" [{agent_filter}]" if agent_filter else ""
+        print(f"\n📊 LLM 调用统计 ({date}){title_suffix}")
+        print("=" * 60)
+        
+        # 获取统计数据
+        stats = db.get_stats(date, agent_filter=agent_filter)
     
     print(f"总调用次数:    {stats['total_calls']}")
     print(f"总 Token:      {stats['total_tokens']:,}")
@@ -1066,7 +1105,7 @@ def main():
     stats_parser = subparsers.add_parser('stats', help='Show statistics')
     stats_parser.add_argument('--date', help='Date to show stats for (YYYY-MM-DD)')
     stats_parser.add_argument('--today', action='store_true', help='Show today\'s stats')
-    stats_parser.add_argument('--agent', '-a', help='Filter by agent name')
+    stats_parser.add_argument('--agents', '-a', help='Filter by agent name(s), comma-separated or "all"')
     stats_parser.add_argument('--by-agent', action='store_true', help='Group stats by agent')
     
     args = parser.parse_args()
@@ -1090,7 +1129,28 @@ def main():
             run_monitor()
     elif args.command == 'stats':
         date = datetime.now().strftime('%Y-%m-%d') if args.today else args.date
-        show_stats(date, agent=args.agent, by_agent=args.by_agent)
+        
+        if args.agents:
+            if args.agents.lower() == 'all':
+                # 自动发现所有 agent
+                agents_base = Path.home() / ".openclaw" / "agents"
+                if agents_base.exists():
+                    agents = [d.name for d in agents_base.iterdir() if d.is_dir()]
+                else:
+                    agents = ['main']
+            else:
+                agents = [a.strip() for a in args.agents.split(',')]
+            
+            if args.by_agent:
+                # 按 agent 分组显示
+                for agent in agents:
+                    show_stats(date, agent=agent, by_agent=False)
+                    print()
+            else:
+                # 显示所有指定 agent 的汇总
+                show_stats(date, agents=agents)
+        else:
+            show_stats(date, agent=None, by_agent=args.by_agent)
     else:
         parser.print_help()
 
