@@ -1,0 +1,35 @@
+{
+  "id": "llm-monitor",
+  "kind": "tool",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true,
+        "description": "Enable LLM monitoring"
+      },
+      "dbPath": {
+        "type": "string",
+        "default": "~/.openclaw/monitor/llm_stats.db",
+        "description": "Path to SQLite database"
+      },
+      "alertThreshold": {
+        "type": "object",
+        "properties": {
+          "dailyTokens": {
+            "type": "number",
+            "default": 10000000,
+            "description": "Daily token threshold for alert"
+          },
+          "dailyCost": {
+            "type": "number",
+            "default": 50,
+            "description": "Daily cost threshold for alert (CNY)"
+          }
+        }
+      }
+    }
+  }
+}
