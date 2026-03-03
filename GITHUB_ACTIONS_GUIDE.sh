@@ -1,0 +1,52 @@
+#!/bin/bash
+# GitHub Actions 使用指南
+
+echo "=========================================="
+echo "📚 GitHub Actions 使用指南"
+echo "=========================================="
+echo ""
+
+echo "1️⃣  查看工作流状态"
+echo "   访问: https://github.com/vacat/openclaw-llm-monitor/actions"
+echo ""
+
+echo "2️⃣  手动触发工作流"
+echo "   - 进入 Actions 页面"
+echo "   - 点击 'Daily LLM Stats Report'"
+echo "   - 点击 'Run workflow' 按钮"
+echo "   - 选择分支 (main)"
+echo "   - 点击 'Run workflow'"
+echo ""
+
+echo "3️⃣  查看执行结果"
+echo "   - 点击工作流运行记录"
+echo "   - 查看每个 Step 的执行日志"
+echo "   - 下载生成的 Artifacts"
+echo "   - 查看自动创建的 Issues"
+echo ""
+
+echo "4️⃣  工作流触发方式"
+echo "   ✓ 定时触发: 每天 UTC 00:00 (北京时间 08:00)"
+echo "   ✓ 手动触发: 通过 GitHub Web 界面"
+echo "   ✓ API 触发: 通过 GitHub API 调用"
+echo ""
+
+echo "5️⃣  查看生成的 Issue"
+echo "   访问: https://github.com/vacat/openclaw-llm-monitor/issues"
+echo "   - 每天会自动创建一个报表 Issue"
+echo "   - 带有 'daily-report' 和 'automated' 标签"
+echo ""
+
+echo "=========================================="
+echo "🔧 常用命令"
+echo "=========================================="
+echo ""
+echo "# 查看工作流文件"
+echo "cat .github/workflows/daily-report.yml"
+echo ""
+echo "# 本地测试（模拟）"
+echo "bash simulate_workflow.sh"
+echo ""
+echo "# 推送到 GitHub 触发"
+echo "git push origin main"
+echo ""
