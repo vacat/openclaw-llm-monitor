@@ -434,6 +434,7 @@ class Database:
                     id TEXT PRIMARY KEY,
                     timestamp TEXT NOT NULL,
                     session_id TEXT NOT NULL,
+                    agent_id TEXT,
                     provider TEXT,
                     model TEXT,
                     input_tokens INTEGER DEFAULT 0,
@@ -453,6 +454,7 @@ class Database:
                 );
                 
                 CREATE INDEX IF NOT EXISTS idx_calls_session ON llm_calls(session_id);
+                CREATE INDEX IF NOT EXISTS idx_calls_agent ON llm_calls(agent_id);
                 CREATE INDEX IF NOT EXISTS idx_calls_time ON llm_calls(timestamp);
                 CREATE INDEX IF NOT EXISTS idx_calls_date ON llm_calls(date(timestamp));
                 
@@ -502,8 +504,9 @@ class Database:
                 params.append(date)
             
             if agent_filter:
+                # 使用前缀匹配：agent_id 存储在 session_id 中，格式为 "agent:uuid"
                 where_conditions.append("session_id LIKE ?")
-                params.append(f"%{agent_filter}%")
+                params.append(f"{agent_filter}:%")
             
             where_clause = "WHERE " + " AND ".join(where_conditions) if where_conditions else ""
             
@@ -580,8 +583,9 @@ class Database:
                 params.append(date)
             
             if agent_filter:
+                # 使用前缀匹配：agent_id 存储在 session_id 中，格式为 "agent:uuid"
                 where_conditions.append("session_id LIKE ?")
-                params.append(f"%{agent_filter}%")
+                params.append(f"{agent_filter}:%")
             
             where_clause = "WHERE " + " AND ".join(where_conditions)
             
@@ -609,7 +613,10 @@ class LogParser:
     def parse_session_file(file_path: Path) -> List[LLMCall]:
         """解析单个会话文件，提取 LLM 调用记录"""
         calls = []
-        session_id = file_path.stem
+        # 从路径中提取 agent 名称和 session_id
+        # 路径格式: ~/.openclaw/agents/{agent}/sessions/{session_id}.jsonl
+        agent_id = file_path.parent.parent.name if 'agents' in str(file_path) else 'unknown'
+        session_id = f"{agent_id}:{file_path.stem}"
         
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
