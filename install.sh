@@ -119,27 +119,50 @@ INSTALL_DIR="${HOME}/.openclaw/monitor"
 
 cd "$INSTALL_DIR"
 
-if [ "$1" == "monitor" ]; then
-    python3 openclaw_monitor.py monitor
-elif [ "$1" == "stats" ]; then
-    if [ "$2" == "--today" ] || [ "$2" == "-t" ]; then
-        python3 openclaw_monitor.py stats --today
-    elif [ -n "$2" ]; then
-        python3 openclaw_monitor.py stats --date "$2"
-    else
-        python3 openclaw_monitor.py stats --today
-    fi
-elif [ "$1" == "help" ] || [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
-    echo "OpenClaw LLM Monitor"
+show_help() {
+    echo "OpenClaw LLM Monitor - 实时监控大模型调用和费用"
     echo ""
     echo "用法:"
-    echo "  openclaw-monitor monitor          # 启动实时监控"
-    echo "  openclaw-monitor stats            # 查看今日统计"
-    echo "  openclaw-monitor stats --today    # 查看今日统计"
-    echo "  openclaw-monitor stats 2026-03-03 # 查看指定日期"
-    echo "  openclaw-monitor help             # 显示帮助"
+    echo "  openclaw-monitor [command] [options]"
+    echo ""
+    echo "命令:"
+    echo "  monitor              启动实时监控 (默认监控 main agent)"
+    echo "  stats                查看今日统计"
+    echo "  help                 显示帮助信息"
+    echo ""
+    echo "Monitor 选项:"
+    echo "  -a, --agents         指定多个 agent，如 \"main,agent2\" 或 \"all\""
+    echo "  -d, --dir            指定监控目录"
+    echo ""
+    echo "Stats 选项:"
+    echo "  --today, -t          查看今日统计 (默认)"
+    echo "  --date YYYY-MM-DD    查看指定日期"
+    echo ""
+    echo "示例:"
+    echo "  openclaw-monitor monitor                    # 监控 main agent"
+    echo "  openclaw-monitor monitor -a main,agent2     # 监控多个 agent"
+    echo "  openclaw-monitor monitor -a all             # 监控所有 agent"
+    echo "  openclaw-monitor stats                      # 查看今日统计"
+    echo "  openclaw-monitor stats --date 2026-03-03    # 查看指定日期"
+    echo ""
+}
+
+if [ "$1" == "help" ] || [ "$1" == "--help" ] || [ "$1" == "-h" ] || [ -z "$1" ]; then
+    show_help
+elif [ "$1" == "monitor" ]; then
+    shift
+    python3 openclaw_monitor.py monitor "$@"
+elif [ "$1" == "stats" ]; then
+    shift
+    if [ -z "$1" ]; then
+        python3 openclaw_monitor.py stats --today
+    elif [[ "$1" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+        python3 openclaw_monitor.py stats --date "$1"
+    else
+        python3 openclaw_monitor.py stats "$@"
+    fi
 else
-    python3 openclaw_monitor.py stats --today
+    show_help
 fi
 EOF
     
@@ -225,16 +248,22 @@ show_usage() {
     echo -e "${GREEN}║              安装完成！                                   ║${NC}"
     echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    echo -e "${BLUE}使用方法:${NC}"
+    echo -e "${BLUE}快速开始:${NC}"
     echo ""
-    echo "  1. 启动实时监控:"
+    echo "  1. 启动实时监控 (默认监控 main agent):"
     echo -e "     ${YELLOW}openclaw-monitor monitor${NC}"
     echo ""
-    echo "  2. 查看今日统计:"
+    echo "  2. 监控多个 agent:"
+    echo -e "     ${YELLOW}openclaw-monitor monitor -a main,agent2${NC}"
+    echo ""
+    echo "  3. 监控所有 agent:"
+    echo -e "     ${YELLOW}openclaw-monitor monitor -a all${NC}"
+    echo ""
+    echo "  4. 查看今日统计:"
     echo -e "     ${YELLOW}openclaw-monitor stats${NC}"
     echo ""
-    echo "  3. 查看指定日期:"
-    echo -e "     ${YELLOW}openclaw-monitor stats 2026-03-03${NC}"
+    echo "  5. 查看帮助:"
+    echo -e "     ${YELLOW}openclaw-monitor help${NC}"
     echo ""
     echo -e "${BLUE}文件位置:${NC}"
     echo "  - 安装目录: $INSTALL_DIR"

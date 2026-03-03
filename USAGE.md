@@ -1,0 +1,23 @@
+#!/bin/bash
+# 快速使用指南
+
+echo "OpenClaw LLM Monitor - 使用指南"
+echo "================================"
+echo ""
+echo "1. 监控命令 (monitor):"
+echo "   openclaw-monitor monitor                    # 监控 main agent"
+echo "   openclaw-monitor monitor -a main,agent2     # 监控多个 agent"
+echo "   openclaw-monitor monitor -a all             # 监控所有 agent"
+echo "   openclaw-monitor monitor -d /path/to/dir    # 监控指定目录"
+echo ""
+echo "2. 统计命令 (stats):"
+echo "   openclaw-monitor stats                      # 查看今日统计"
+echo "   openclaw-monitor stats --today              # 查看今日统计"
+echo "   openclaw-monitor stats --date 2026-03-03    # 查看指定日期"
+echo ""
+echo "3. 查看帮助:"
+echo "   openclaw-monitor --help"
+echo "   openclaw-monitor monitor --help"
+echo "   openclaw-monitor stats --help"
+echo ""
+echo "GitHub: https://github.com/vacat/openclaw-llm-monitor"

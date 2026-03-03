@@ -745,55 +745,225 @@ class SessionHandler(FileSystemEventHandler):
         if calls:
             print(f"[Monitor] Processed {len(calls)} calls from {file_path.name}")
 
-def run_monitor():
-    """启动监控服务"""
+def run_monitor(sessions_dir: Optional[Path] = None, agents: Optional[list] = None):
+    """启动监控服务
+    
+    Args:
+        sessions_dir: 指定监控目录，默认使用 ~/.openclaw/agents/main/sessions
+        agents: 指定多个 agent 名称列表，如 ['main', 'agent2']
+    """
+    # 确定要监控的目录列表
+    monitor_dirs = []
+    
+    if agents:
+        # 监控多个 agent
+        base_dir = Path.home() / ".openclaw" / "agents"
+        for agent in agents:
+            agent_dir = base_dir / agent / "sessions"
+            if agent_dir.exists():
+                monitor_dirs.append(agent_dir)
+            else:
+                print(f"⚠️  Agent '{agent}' 的会话目录不存在: {agent_dir}")
+    elif sessions_dir:
+        # 监控指定目录
+        monitor_dirs = [sessions_dir]
+    else:
+        # 监控默认目录
+        monitor_dirs = [SESSIONS_DIR]
+    
+    if not monitor_dirs:
+        print("❌ 没有有效的监控目录，退出")
+        return
+    
     print("🚀 OpenClaw LLM Monitor 启动中...")
-    print(f"📁 监控目录: {SESSIONS_DIR}")
+    print(f"📁 监控目录数: {len(monitor_dirs)}")
+    for i, d in enumerate(monitor_dirs, 1):
+        print(f"   {i}. {d}")
     print(f"💾 数据库: {DEFAULT_DB_PATH}")
     print("Press Ctrl+C to stop\n")
     
     db = Database()
-    handler = SessionHandler(db)
-    observer = Observer()
-    observer.schedule(handler, str(SESSIONS_DIR), recursive=False)
-    observer.start()
+    observers = []
     
-    # 首次扫描已有文件
-    print("🔍 扫描历史文件...")
-    for jsonl_file in SESSIONS_DIR.glob("*.jsonl"):
-        if '.deleted.' in jsonl_file.name:
-            continue
-        calls = LogParser.parse_session_file(jsonl_file)
-        for call in calls:
-            db.insert_call(call)
-        if calls:
-            print(f"  ✓ {jsonl_file.name}: {len(calls)} calls")
+    # 为每个目录创建监控
+    for monitor_dir in monitor_dirs:
+        handler = SessionHandler(db)
+        observer = Observer()
+        observer.schedule(handler, str(monitor_dir), recursive=False)
+        observer.start()
+        observers.append(observer)
+        
+        # 首次扫描已有文件
+        print(f"🔍 扫描 [{monitor_dir.parent.name}] 历史文件...")
+        file_count = 0
+        for jsonl_file in monitor_dir.glob("*.jsonl"):
+            if '.deleted.' in jsonl_file.name:
+                continue
+            calls = LogParser.parse_session_file(jsonl_file)
+            for call in calls:
+                db.insert_call(call)
+            if calls:
+                print(f"  ✓ {jsonl_file.name}: {len(calls)} calls")
+                file_count += 1
+        if file_count == 0:
+            print(f"  ℹ️  没有历史文件")
     
     print("\n👀 开始实时监控...")
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        observer.stop()
-        print("\n👋 Monitor stopped")
-    
-    observer.join()
+        print("\n👋 停止监控...")
+        for observer in observers:
+            observer.stop()
+        for observer in observers:
+            observer.join()
+        print("✅ 监控已停止")
 
-def show_stats(date: Optional[str] = None):
-    """显示统计信息"""
+def show_stats(date: Optional[str] = None, agent: Optional[str] = None, by_agent: bool = False):
+    """显示统计信息
+    
+    Args:
+        date: 指定日期
+        agent: 筛选特定 agent
+        by_agent: 按 agent 分组显示
+    """
     db = Database()
     
     if date is None:
         date = datetime.now().strftime('%Y-%m-%d')
     
-    stats = db.get_stats(date)
-    
-    print(f"\n📊 LLM 调用统计 ({date})")
+    # 构建标题
+    title_suffix = f" [{agent}]" if agent else ""
+    print(f"\n📊 LLM 调用统计 ({date}){title_suffix}")
     print("=" * 60)
+    
+    # 获取统计数据
+    stats = db.get_stats(date, agent_filter=agent)
+    
     print(f"总调用次数:    {stats['total_calls']}")
     print(f"总 Token:      {stats['total_tokens']:,}")
     print(f"  ├─ Input:    {stats['input_tokens']:,}")
     print(f"  └─ Output:   {stats['output_tokens']:,}")
+    
+    # 费用展示
+    print(f"\n💰 费用统计:")
+    if stats['actual_cost'] > 0:
+        print(f"  实际费用:    ${stats['actual_cost']:.4f} USD (来自API)")
+    
+    # 展示估算费用明细（按模型分组显示不同币种）
+    if stats['models']:
+        print(f"\n  估算费用（按模型定价币种）:")
+        
+        # 按币种分组
+        costs_by_currency = defaultdict(lambda: {'total': 0, 'input': 0, 'output': 0, 
+                                                  'cache_read': 0, 'cache_write': 0,
+                                                  'input_tokens': 0, 'output_tokens': 0,
+                                                  'cache_read_tokens': 0, 'cache_write_tokens': 0})
+        
+        for m in stats['models']:
+            model = m['model']
+            pricing = get_model_pricing(model)
+            currency = pricing['currency']
+            symbol = pricing['symbol']
+            
+            # 获取该模型的详细费用
+            model_details = db.get_model_details(date, model, agent_filter=agent)
+            cost_info = calculate_cost(model, model_details['input'], model_details['output'],
+                                      model_details.get('cache_read', 0), model_details.get('cache_write', 0))
+            
+            costs_by_currency[currency]['total'] += cost_info['total']
+            costs_by_currency[currency]['input'] += cost_info['input']
+            costs_by_currency[currency]['output'] += cost_info['output']
+            costs_by_currency[currency]['cache_read'] += cost_info['cache_read']
+            costs_by_currency[currency]['cache_write'] += cost_info['cache_write']
+            costs_by_currency[currency]['symbol'] = symbol
+            costs_by_currency[currency]['input_tokens'] += model_details['input']
+            costs_by_currency[currency]['output_tokens'] += model_details['output']
+            costs_by_currency[currency]['cache_read_tokens'] += model_details.get('cache_read', 0)
+            costs_by_currency[currency]['cache_write_tokens'] += model_details.get('cache_write', 0)
+        
+        # 按币种显示
+        for currency, costs in costs_by_currency.items():
+            symbol = costs['symbol']
+            print(f"\n    [{currency}]")
+            print(f"    实际计费: {symbol}{costs['total']:.4f}")
+            print(f"      ├─ Input:       {symbol}{costs['input']:.4f} ({costs['input_tokens']:,} tokens)")
+            print(f"      ├─ Output:      {symbol}{costs['output']:.4f} ({costs['output_tokens']:,} tokens)")
+            if costs['cache_read_tokens'] > 0 or costs['cache_write_tokens'] > 0:
+                print(f"      ├─ Cache Read:  {symbol}{costs['cache_read']:.4f} ({costs['cache_read_tokens']:,} tokens)")
+                print(f"      └─ Cache Write: {symbol}{costs['cache_write']:.4f} ({costs['cache_write_tokens']:,} tokens)")
+            
+            # 计算如果没有 cache 会多花多少（节省费用）
+            if costs['cache_read_tokens'] > 0:
+                # 获取该币种的模型定价（假设主要使用一个模型）
+                sample_model = None
+                for m in stats['models']:
+                    p = get_model_pricing(m['model'])
+                    if p['currency'] == currency:
+                        sample_model = m['model']
+                        break
+                
+                if sample_model:
+                    pricing = get_model_pricing(sample_model)
+                    # 如果没有 cache，cache_read_tokens 会按正常 input 价格计费
+                    normal_input_price = pricing['input']  # 正常 input 价格
+                    cache_read_price = pricing['cache_read']  # cache read 价格
+                    
+                    # 计算节省的费用
+                    cache_read_tokens = costs['cache_read_tokens']
+                    would_be_cost = (cache_read_tokens / 1_000_000) * normal_input_price
+                    actual_cache_cost = (cache_read_tokens / 1_000_000) * cache_read_price
+                    saved_cost = would_be_cost - actual_cache_cost
+                    
+                    print(f"\n    💡 Cache 节省分析:")
+                    print(f"      如果没有 Cache 需支付: {symbol}{would_be_cost:.4f}")
+                    print(f"      Cache Read 实际支付:   {symbol}{actual_cache_cost:.4f}")
+                    print(f"      节省费用:              {symbol}{saved_cost:.4f} ({saved_cost/would_be_cost*100:.1f}%)")
+    else:
+        # 如果没有模型分布，使用默认计算
+        default_cost = calculate_cost('default', stats['input_tokens'], stats['output_tokens'],
+                                     stats['cache_read_tokens'], stats['cache_write_tokens'])
+        symbol = default_cost['symbol']
+        print(f"\n  估算费用:    {symbol}{default_cost['total']:.4f} {default_cost['currency']}")
+    
+    if stats['models']:
+        print(f"\n按模型分布:")
+        for m in stats['models']:
+            model = m['model']
+            calls = m['calls']
+            tokens = m['tokens']
+            
+            pricing = get_model_pricing(model)
+            symbol = pricing['symbol']
+            currency = pricing['currency']
+            
+            cost_info = ""
+            if m.get('actual_cost', 0) > 0:
+                cost_info = f", actual: ${m['actual_cost']:.4f}"
+            if m.get('estimated_cost', 0) > 0:
+                cost_info += f", est: {symbol}{m['estimated_cost']:.4f} {currency}"
+            
+            print(f"  {model}: {calls} calls ({tokens:,} tokens{cost_info})")
+    
+    # 按 agent 分组显示
+    if by_agent and stats.get('by_agent'):
+        print(f"\n📁 按 Agent 分布:")
+        print("=" * 60)
+        for agent_name, agent_stats in stats['by_agent'].items():
+            print(f"\n  [{agent_name}]")
+            print(f"    调用次数: {agent_stats['calls']}")
+            print(f"    Tokens:   {agent_stats['tokens']:,}")
+            if agent_stats.get('cost', 0) > 0:
+                print(f"    费用:     ¥{agent_stats['cost']:.2f}")
+    
+    if stats['sessions']:
+        print(f"\n按会话分布 (Top 10):")
+        for s in stats['sessions']:
+            session_name = s['session_id'][:20] + "..." if len(s['session_id']) > 20 else s['session_id']
+            print(f"  {session_name}: {s['calls']} calls ({s['tokens']:,} tokens)")
+    
+    print()
     
     # 费用展示
     print(f"\n💰 费用统计:")
@@ -904,24 +1074,45 @@ def show_stats(date: Optional[str] = None):
     print()
 
 def main():
-    parser = argparse.ArgumentParser(description='OpenClaw LLM Monitor')
+    parser = argparse.ArgumentParser(description='OpenClaw LLM Monitor - 实时监控大模型调用和费用')
     subparsers = parser.add_subparsers(dest='command', help='Commands')
     
     # monitor 命令
     monitor_parser = subparsers.add_parser('monitor', help='Start real-time monitoring')
+    monitor_parser.add_argument('--dir', '-d', 
+                                help='指定监控目录 (默认: ~/.openclaw/agents/main/sessions)')
+    monitor_parser.add_argument('--agents', '-a',
+                                help='指定多个 agent，逗号分隔，如 "main,agent2" 或 "all" 监控所有')
     
     # stats 命令
     stats_parser = subparsers.add_parser('stats', help='Show statistics')
     stats_parser.add_argument('--date', help='Date to show stats for (YYYY-MM-DD)')
     stats_parser.add_argument('--today', action='store_true', help='Show today\'s stats')
+    stats_parser.add_argument('--agent', '-a', help='Filter by agent name')
+    stats_parser.add_argument('--by-agent', action='store_true', help='Group stats by agent')
     
     args = parser.parse_args()
     
     if args.command == 'monitor':
-        run_monitor()
+        if args.agents:
+            if args.agents.lower() == 'all':
+                # 自动发现所有 agent
+                agents_base = Path.home() / ".openclaw" / "agents"
+                if agents_base.exists():
+                    agents = [d.name for d in agents_base.iterdir() if d.is_dir()]
+                else:
+                    agents = ['main']
+            else:
+                agents = [a.strip() for a in args.agents.split(',')]
+            run_monitor(agents=agents)
+        elif args.dir:
+            sessions_dir = Path(args.dir)
+            run_monitor(sessions_dir=sessions_dir)
+        else:
+            run_monitor()
     elif args.command == 'stats':
         date = datetime.now().strftime('%Y-%m-%d') if args.today else args.date
-        show_stats(date)
+        show_stats(date, agent=args.agent, by_agent=args.by_agent)
     else:
         parser.print_help()
 
